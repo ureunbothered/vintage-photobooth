@@ -267,8 +267,25 @@ function applyTexture(ctx) {
 ====================== */
 function downloadStrip() {
   if (!finalStripCanvas) return;
-  const a = document.createElement("a");
-  a.download = "photo-strip.png";
-  a.href = finalStripCanvas.toDataURL("image/png");
-  a.click();
+
+  const isPhone =
+    /iPhone|Android.*Mobile|Windows Phone/i.test(navigator.userAgent);
+
+  // Desktop + iPad: keep EXACT behavior you already have
+  if (!isPhone) {
+    const link = document.createElement("a");
+    link.download = "photo-strip.png";
+    link.href = finalStripCanvas.toDataURL("image/png");
+    link.click();
+    return;
+  }
+
+  // Phone fallback: open image so user can long-press → Save
+  finalStripCanvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }, "image/png");
 }
+
+
