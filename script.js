@@ -64,13 +64,19 @@ function flashEffect() {
 function takePhoto() {
   const canvas = document.createElement("canvas");
   const w = 600;
-  const h = 800;
+  const h = auto;
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext("2d");
-  // Mirror horizontally
+
+  // Mirror
+  ctx.translate(w, 0);
   ctx.scale(-1, 1);
-  ctx.drawImage(video, -w, 0, w, h);
+
+  // ✅ APPLY FILTER HERE (iPad-safe)
+  ctx.filter = "grayscale(1) contrast(1.4) brightness(1) sepia(0.05)";
+  ctx.drawImage(video, 0, 0, w, h);
+
   photos.push(canvas.toDataURL("image/png"));
 }
 
