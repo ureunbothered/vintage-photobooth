@@ -91,8 +91,8 @@ async function startSession() {
 // Build strip
 function buildStrip() {
   const SIDE_MARGIN = 20;
-  const TOP_MARGIN = 100;    // space from top of canvas to first photo
-  const BOTTOM_MARGIN = 120; // space for bottom text + margin
+  const TOP_MARGIN = 100;    // reduced gap from title to first photo
+  const BOTTOM_MARGIN = 120; // added extra margin for bottom text
   const SPACING = 20;
 
   const photoWidth = 600;
@@ -110,15 +110,17 @@ function buildStrip() {
   ctx.fillStyle = "#5a1a1a";
   ctx.fillRect(0, 0, stripWidth, stripHeight);
 
+  // Filter for photos
+  ctx.filter = "grayscale(1) contrast(1.4) brightness(1) sepia(0.05)";
+
   // Top title
   drawTitle(ctx, "Ure's 30th Murder Mystery Party", stripWidth, SIDE_MARGIN, TOP_MARGIN / 2 + 20);
 
-  // Draw all photos with filter
+  // Draw photos
   let loadedCount = 0;
   photos.forEach((src, i) => {
     const img = new Image();
     img.onload = () => {
-      ctx.filter = "grayscale(1) contrast(1.4) brightness(1) sepia(0.05)"; // filter applied in canvas
       const x = SIDE_MARGIN;
       const y = TOP_MARGIN + i * (photoHeight + SPACING);
       ctx.drawImage(img, x, y, photoWidth, photoHeight);
@@ -128,8 +130,11 @@ function buildStrip() {
 
       loadedCount++;
       if (loadedCount === photos.length) {
-        // Once all photos are drawn, draw bottom text + texture, then finalize canvas
-        drawBottomTextAndTexture(ctx, stripWidth, stripHeight, TOP_MARGIN, photoHeight, SPACING, BOTTOM_MARGIN, canvas);
+        drawBottomTextAndTexture(ctx, stripWidth, stripHeight, TOP_MARGIN, photoHeight, SPACING, BOTTOM_MARGIN);
+        result.innerHTML = "";
+        result.appendChild(canvas);
+        finalStripCanvas = canvas;
+        document.getElementById("downloadBtn").style.display = "inline-block";
       }
     };
     img.src = src;
@@ -148,12 +153,12 @@ function drawTitle(ctx, text, stripWidth, sideMargin, yPosition) {
   ctx.fillText(text, stripWidth / 2, yPosition);
 }
 
-// Bottom text + vintage texture (fixed for download matching preview)
-function drawBottomTextAndTexture(ctx, stripWidth, stripHeight, topMargin, photoHeight, spacing, bottomMargin, canvas) {
+// Bottom text + vintage texture
+function drawBottomTextAndTexture(ctx, stripWidth, stripHeight, topMargin, photoHeight, spacing, bottomMargin) {
   const fullText = document.getElementById("customText").value.slice(0, MAX_CUSTOM_CHARS);
   const photosCount = 4;
 
-  // Split text into two lines (~30 chars each)
+  // Split text into two lines
   const words = fullText.split(" ");
   let line1 = "";
   let line2 = "";
@@ -162,20 +167,20 @@ function drawBottomTextAndTexture(ctx, stripWidth, stripHeight, topMargin, photo
     else line2 = (line2 + " " + word).trim();
   }
 
-  const startY = topMargin + photoHeight*photosCount + spacing*(photosCount-1) + 30;
+const startY = topMargin + photoHeight*photosCount + spacing*(photosCount-1) + 30; // added 20px more margin
 
-  // Draw custom text
+
   ctx.fillStyle = "#f5f0e6";
   ctx.textAlign = "center";
+
   ctx.font = "22px 'Playwrite India Guides', cursive";
   ctx.fillText(line1, stripWidth / 2, startY);
   ctx.fillText(line2, stripWidth / 2, startY + 28);
 
-  // Draw date below message, smaller
   ctx.font = "16px 'Playwrite India Guides', cursive";
   ctx.fillText(new Date().toLocaleDateString(), stripWidth / 2, startY + 60);
 
-  // Draw vintage texture **and finalize canvas only after texture loads**
+  // Overlay texture
   const texture = new Image();
   texture.src = "vintage-texture.jpg";
   texture.onload = () => {
@@ -185,16 +190,10 @@ function drawBottomTextAndTexture(ctx, stripWidth, stripHeight, topMargin, photo
     const scale = stripWidth / texture.width;
     ctx.drawImage(texture, 0, 0, stripWidth, texture.height * scale);
     ctx.restore();
-
-    // ✅ Now the preview and download use the exact same canvas
-    result.innerHTML = "";
-    result.appendChild(canvas);
-    finalStripCanvas = canvas;
-    document.getElementById("downloadBtn").style.display = "inline-block";
   };
 }
 
-// Download button
+// Download
 function downloadStrip() {
   if (!finalStripCanvas) return;
   const link = document.createElement("a");
