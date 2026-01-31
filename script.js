@@ -3,9 +3,29 @@ let finalStripCanvas = null;
 const video = document.getElementById("camera");
 const countdownEl = document.getElementById("countdown");
 const result = document.getElementById("result");
+const downloadBtn = document.getElementById("downloadBtn");
 const MAX_CUSTOM_CHARS = 60;
 
 let photos = [];
+
+/* ======================
+   STRIP CONFIG (ONE SOURCE OF TRUTH)
+====================== */
+const PHOTO_W = 600;
+const PHOTO_H = 800; // fixed portrait ratio
+const PHOTO_COUNT = 4;
+
+const SIDE_MARGIN = 40;
+const TOP_MARGIN = 120;
+const BOTTOM_MARGIN = 140;
+const SPACING = 24;
+
+const STRIP_W = PHOTO_W + SIDE_MARGIN * 2;
+const STRIP_H =
+  TOP_MARGIN +
+  PHOTO_COUNT * PHOTO_H +
+  (PHOTO_COUNT - 1) * SPACING +
+  BOTTOM_MARGIN;
 
 /* ======================
    CAMERA
@@ -26,10 +46,10 @@ function countdown(seconds) {
   return new Promise(resolve => {
     let count = seconds;
     countdownEl.innerText = count;
-    const interval = setInterval(() => {
+    const i = setInterval(() => {
       count--;
       if (count <= 0) {
-        clearInterval(interval);
+        clearInterval(i);
         countdownEl.innerText = "";
         resolve();
       } else {
@@ -39,25 +59,24 @@ function countdown(seconds) {
   });
 }
 
-function pause(ms) {
-  return new Promise(r => setTimeout(r, ms));
-}
+const pause = ms => new Promise(r => setTimeout(r, ms));
 
 function flashEffect() {
   return new Promise(resolve => {
     const flash = document.createElement("div");
-    flash.style.position = "absolute";
-    flash.style.inset = 0;
-    flash.style.background = "white";
-    flash.style.opacity = "0.7";
-    flash.style.zIndex = 1000;
-    flash.style.transition = "opacity 0.3s ease-out";
+    Object.assign(flash.style, {
+      position: "fixed",
+      inset: 0,
+      background: "#fff",
+      opacity: 0.7,
+      zIndex: 9999,
+      transition: "opacity 0.3s ease"
+    });
     document.body.appendChild(flash);
-
     setTimeout(() => {
-      flash.style.opacity = "0";
+      flash.style.opacity = 0;
       setTimeout(() => {
-        document.body.removeChild(flash);
+        flash.remove();
         resolve();
       }, 300);
     }, 100);
@@ -65,21 +84,43 @@ function flashEffect() {
 }
 
 /* ======================
-   CAPTURE PHOTO (LOCKED 600x800)
+   PHOTO CAPTURE (NO STRETCHING)
 ====================== */
 function takePhoto() {
-  const canvas = document.createElement("canvas");
-  const w = 600;
-  const h = 800;
+  const vw = video.videoWidth;
+  const vh = video.videoHeight;
 
-  canvas.width = w;
-  canvas.height = h;
+  // crop center to match PHOTO_W / PHOTO_H ratio
+  const targetRatio = PHOTO_W / PHOTO_H;
+  const videoRatio = vw / vh;
+
+  let sx, sy, sw, sh;
+
+  if (videoRatio > targetRatio) {
+    // video too wide → crop sides
+    sh = vh;
+    sw = vh * targetRatio;
+    sx = (vw - sw) / 2;
+    sy = 0;
+  } else {
+    // video too tall → crop top/bottom
+    sw = vw;
+    sh = vw / targetRatio;
+    sx = 0;
+    sy = (vh - sh) / 2;
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = PHOTO_W;
+  canvas.height = PHOTO_H;
 
   const ctx = canvas.getContext("2d");
 
-  // Mirror
+  // mirror
+  ctx.translate(PHOTO_W, 0);
   ctx.scale(-1, 1);
-  ctx.drawImage(video, -w, 0, w, h);
+
+  ctx.drawImage(video, sx, sy, sw, sh, 0, 0, PHOTO_W, PHOTO_H);
 
   photos.push(canvas.toDataURL("image/png"));
 }
@@ -90,92 +131,66 @@ function takePhoto() {
 async function startSession() {
   photos = [];
   result.innerHTML = "";
-  document.getElementById("downloadBtn").style.display = "none";
+  downloadBtn.style.display = "none";
 
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < PHOTO_COUNT; i++) {
     await countdown(3);
     takePhoto();
     await flashEffect();
-    if (i < 3) await pause(800);
+    if (i < PHOTO_COUNT - 1) await pause(800);
   }
 
   buildStrip();
 }
 
 /* ======================
-   BUILD STRIP (SINGLE SOURCE OF TRUTH)
+   STRIP BUILD
 ====================== */
 function buildStrip() {
-  const SIDE_MARGIN = 20;
-  const TOP_MARGIN = 100;
-  const BOTTOM_MARGIN = 120;
-  const SPACING = 20;
-
-  const photoWidth = 600;
-  const photoHeight = 800;
-  const photosCount = photos.length;
-
-  const stripWidth = photoWidth + SIDE_MARGIN * 2;
-  const stripHeight =
-    TOP_MARGIN +
-    photoHeight * photosCount +
-    SPACING * (photosCount - 1) +
-    BOTTOM_MARGIN;
-
   const canvas = document.createElement("canvas");
-  canvas.width = stripWidth;
-  canvas.height = stripHeight;
+  canvas.width = STRIP_W;
+  canvas.height = STRIP_H;
+
   const ctx = canvas.getContext("2d");
 
-  /* ---- Background ---- */
+  /* Background */
   ctx.fillStyle = "#5a1a1a";
-  ctx.fillRect(0, 0, stripWidth, stripHeight);
+  ctx.fillRect(0, 0, STRIP_W, STRIP_H);
 
-  /* ---- Title ---- */
+  /* Title */
   drawTitle(
     ctx,
     "Ure's 30th Murder Mystery Party",
-    stripWidth,
+    STRIP_W,
     SIDE_MARGIN,
     TOP_MARGIN / 2 + 20
   );
 
-  /* ---- Draw Photos ---- */
   let loaded = 0;
 
   photos.forEach((src, i) => {
     const img = new Image();
     img.onload = () => {
       const x = SIDE_MARGIN;
-      const y = TOP_MARGIN + i * (photoHeight + SPACING);
+      const y = TOP_MARGIN + i * (PHOTO_H + SPACING);
 
-      // Reset context state EVERY draw
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.filter =
-        "grayscale(1) contrast(1.4) brightness(1) sepia(0.05)";
-
-      ctx.drawImage(img, x, y, photoWidth, photoHeight);
+      ctx.save();
+      ctx.filter = "grayscale(1) contrast(1.3) brightness(1) sepia(0.06)";
+      ctx.drawImage(img, x, y, PHOTO_W, PHOTO_H);
+      ctx.restore();
 
       ctx.strokeStyle = "#3e0f0f";
       ctx.lineWidth = 2;
-      ctx.strokeRect(x, y, photoWidth, photoHeight);
+      ctx.strokeRect(x, y, PHOTO_W, PHOTO_H);
 
       loaded++;
-      if (loaded === photosCount) {
-        drawBottomTextAndTexture(
-          ctx,
-          stripWidth,
-          TOP_MARGIN,
-          photoHeight,
-          SPACING,
-          photosCount
-        );
-
+      if (loaded === photos.length) {
+        drawBottomText(ctx);
+        applyTexture(ctx);
         result.innerHTML = "";
         result.appendChild(canvas);
         finalStripCanvas = canvas;
-        document.getElementById("downloadBtn").style.display =
-          "inline-block";
+        downloadBtn.style.display = "inline-block";
       }
     };
     img.src = src;
@@ -185,7 +200,7 @@ function buildStrip() {
 /* ======================
    TITLE
 ====================== */
-function drawTitle(ctx, text, stripWidth, sideMargin, y) {
+function drawTitle(ctx, text, width, margin, y) {
   let size = 48;
   ctx.fillStyle = "#f5f0e6";
   ctx.textAlign = "center";
@@ -193,80 +208,58 @@ function drawTitle(ctx, text, stripWidth, sideMargin, y) {
   do {
     ctx.font = `${size}px 'Playwrite India Guides', cursive`;
     size--;
-  } while (
-    ctx.measureText(text).width >
-      stripWidth - sideMargin * 2 &&
-    size > 10
-  );
+  } while (ctx.measureText(text).width > width - margin * 2 && size > 12);
 
-  ctx.fillText(text, stripWidth / 2, y);
+  ctx.fillText(text, width / 2, y);
 }
 
 /* ======================
-   BOTTOM TEXT + TEXTURE (BAKED INTO CANVAS)
+   BOTTOM TEXT (NO FILTER = NO LINES)
 ====================== */
-function drawBottomTextAndTexture(
-  ctx,
-  stripWidth,
-  topMargin,
-  photoHeight,
-  spacing,
-  photosCount
-) {
+function drawBottomText(ctx) {
   const text = document
     .getElementById("customText")
     .value.slice(0, MAX_CUSTOM_CHARS);
 
   const words = text.split(" ");
-  let line1 = "";
-  let line2 = "";
+  let line1 = "", line2 = "";
 
-  for (const word of words) {
-    if ((line1 + " " + word).trim().length <= 30) {
-      line1 = (line1 + " " + word).trim();
-    } else {
-      line2 = (line2 + " " + word).trim();
-    }
+  for (const w of words) {
+    if ((line1 + " " + w).trim().length <= 30) line1 = (line1 + " " + w).trim();
+    else line2 = (line2 + " " + w).trim();
   }
 
-  const startY =
-    topMargin +
-    photoHeight * photosCount +
-    spacing * (photosCount - 1) +
-    30;
+  const y =
+    TOP_MARGIN +
+    PHOTO_COUNT * PHOTO_H +
+    (PHOTO_COUNT - 1) * SPACING +
+    40;
 
-  ctx.filter = "none";
   ctx.fillStyle = "#f5f0e6";
   ctx.textAlign = "center";
 
   ctx.font = "22px 'Playwrite India Guides', cursive";
-  ctx.fillText(line1, stripWidth / 2, startY);
-  ctx.fillText(line2, stripWidth / 2, startY + 28);
+  ctx.fillText(line1, STRIP_W / 2, y);
+  ctx.fillText(line2, STRIP_W / 2, y + 28);
 
   ctx.font = "16px 'Playwrite India Guides', cursive";
-  ctx.fillText(
-    new Date().toLocaleDateString(),
-    stripWidth / 2,
-    startY + 60
-  );
+  ctx.fillText(new Date().toLocaleDateString(), STRIP_W / 2, y + 60);
+}
 
-  /* ---- Texture Overlay ---- */
+/* ======================
+   TEXTURE (APPLIED LAST)
+====================== */
+function applyTexture(ctx) {
   const texture = new Image();
+  texture.src = "vintage-texture.jpg";
   texture.onload = () => {
     ctx.save();
-    ctx.globalAlpha = 0.25;
+    ctx.globalAlpha = 0.18;
     ctx.globalCompositeOperation = "multiply";
-    const scale = stripWidth / texture.width;
-    ctx.drawImage(
-      texture,
-      0,
-      0,
-      stripWidth,
-      texture.height * scale
-    );
+    const scale = STRIP_W / texture.width;
+    ctx.drawImage(texture, 0, 0, STRIP_W, texture.height * scale);
     ctx.restore();
   };
-  texture.src = "vintage-texture.jpg";
 }
 
 /* ======================
@@ -274,9 +267,8 @@ function drawBottomTextAndTexture(
 ====================== */
 function downloadStrip() {
   if (!finalStripCanvas) return;
-
-  const link = document.createElement("a");
-  link.download = "photo-strip.png";
-  link.href = finalStripCanvas.toDataURL("image/png");
-  link.click();
+  const a = document.createElement("a");
+  a.download = "photo-strip.png";
+  a.href = finalStripCanvas.toDataURL("image/png");
+  a.click();
 }
