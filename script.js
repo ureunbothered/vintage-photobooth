@@ -155,7 +155,7 @@ function buildStrip() {
 
 
       ctx.strokeStyle = "#3e0f0f";
-      ctx.lineWidth = 2;
+      ctx.lineWidth = .5;
       ctx.strokeRect(x, y, photoWidth, photoHeight);
 
       loaded++;
@@ -273,24 +273,93 @@ function drawBottomTextAndTexture(
 function downloadStrip() {
   if (!finalStripCanvas) return;
 
-  const link = document.createElement("a");
-  link.download = "photo-strip.png";
-  link.href = finalStripCanvas.toDataURL("image/png");
-  link.click();
+  // ✅ Create a new temporary canvas to force filters and texture to be baked in
+  const downloadCanvas = document.createElement("canvas");
+  downloadCanvas.width = finalStripCanvas.width;
+  downloadCanvas.height = finalStripCanvas.height;
+  const ctx = downloadCanvas.getContext("2d");
+
+  // Fill background
+  ctx.fillStyle = "#5a1a1a";
+  ctx.fillRect(0, 0, downloadCanvas.width, downloadCanvas.height);
+
+  // Draw each photo with exact filters (black & white + sepia)
+  const SIDE_MARGIN = 20;
+  const TOP_MARGIN = 100;
+  const SPACING = 20;
+  const BOTTOM_MARGIN = 120;
+  const photoWidth = 600;
+  const photoHeight = 800;
+
+  ctx.filter = "grayscale(1) contrast(1.4) brightness(1) sepia(0.05)";
+
+  photos.forEach((src, i) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous"; // ensures no tainting
+    img.onload = () => {
+      const x = SIDE_MARGIN;
+      const y = TOP_MARGIN + i * (photoHeight + SPACING);
+      ctx.drawImage(img, x, y, photoWidth, photoHeight);
+
+      // Add border matching preview
+      ctx.strokeStyle = "#3e0f0f";
+      ctx.lineWidth = .5;
+      ctx.strokeRect(x, y, photoWidth, photoHeight);
+
+      // After all images are loaded, draw bottom text & texture
+      if (i === photos.length - 1) {
+        // Draw bottom text
+        const fullText = document.getElementById("customText").value.slice(0, 60);
+        const words = fullText.split(" ");
+        let line1 = "", line2 = "";
+        for (let word of words) {
+          if ((line1 + " " + word).trim().length <= 30) line1 = (line1 + " " + word).trim();
+          else line2 = (line2 + " " + word).trim();
+        }
+
+        const startY = TOP_MARGIN + photoHeight * photos.length + SPACING * (photos.length - 1) + 30;
+        ctx.fillStyle = "#f5f0e6";
+        ctx.textAlign = "center";
+        ctx.font = "22px 'Playwrite India Guides', cursive";
+        ctx.fillText(line1, downloadCanvas.width / 2, startY);
+        ctx.fillText(line2, downloadCanvas.width / 2, startY + 28);
+
+        ctx.font = "16px 'Playwrite India Guides', cursive";
+        ctx.fillText(new Date().toLocaleDateString(), downloadCanvas.width / 2, startY + 60);
+
+        // Draw vintage texture overlay
+        const texture = new Image();
+        texture.src = "vintage-texture.jpg";
+        texture.onload = () => {
+          ctx.save();
+          ctx.globalAlpha = 0.25;
+          ctx.globalCompositeOperation = "multiply";
+          const scale = downloadCanvas.width / texture.width;
+          ctx.drawImage(texture, 0, 0, downloadCanvas.width, texture.height * scale);
+          ctx.restore();
+
+          // ✅ Trigger download (works on desktop & mobile)
+          if (navigator.userAgent.match(/iPhone|iPad|iPod/)) {
+            // iOS Safari download workaround
+            const imgURL = downloadCanvas.toDataURL("image/png");
+            const popup = window.open(imgURL, "_blank");
+            if (!popup) alert("Enable popups to download the photo strip on iOS.");
+          } else {
+            const link = document.createElement("a");
+            link.download = "photo-strip.png";
+            link.href = downloadCanvas.toDataURL("image/png");
+            link.click();
+          }
+
+          // ✅ Reset for next user
+          document.getElementById("customText").value = "";
+          document.getElementById("result").innerHTML = "";
+          finalStripCanvas = null;
+          document.getElementById("downloadBtn").style.display = "none";
+          photos = [];
+        };
+      }
+    };
+    img.src = src;
+  });
 }
-
-function downloadStrip() {
-  if (!finalStripCanvas) return;
-
-  // Trigger download
-  const link = document.createElement("a");
-  link.download = "photo-strip.png";
-  link.href = finalStripCanvas.toDataURL("image/png");
-  link.click();
-
-  // ✅ Reset for next user
-  document.getElementById("customText").value = ""; // clear text input
-  document.getElementById("result").innerHTML = "";  // clear preview
-  finalStripCanvas = null;                           // reset stored canvas
-}
-
