@@ -110,12 +110,13 @@ button.secondary:hover {
   margin-top: 20px;
 }
 
+
 #result canvas {
-  width: 100%;
-  height: auto; 
+  width: auto;      /* use natural canvas width */
+  height: auto;     /* use natural canvas height */
+  max-width: 100%;  /* scale down on small screens without stretching */
   border: 4px solid #3e0f0f;
   background: #5a1a1a;
   display: block;
   margin: 0 auto;
-  
 }
