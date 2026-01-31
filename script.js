@@ -91,20 +91,83 @@ async function startSession() {
 // Build strip
 function buildStrip() {
   const SIDE_MARGIN = 20;
-  const TOP_MARGIN = 100;    // reduced gap from title to first photo
-  const BOTTOM_MARGIN = 120; // added extra margin for bottom text
+  const TOP_MARGIN = 100;    
+  const BOTTOM_MARGIN = 120; 
   const SPACING = 20;
 
   const photoWidth = 600;
   const photoHeight = 800;
+  const photosCount = photos.length;
 
   const stripWidth = photoWidth + SIDE_MARGIN * 2;
-  const stripHeight = TOP_MARGIN + photoHeight * photos.length + SPACING * (photos.length - 1) + BOTTOM_MARGIN;
+  const stripHeight =
+    TOP_MARGIN +
+    photoHeight * photosCount +
+    SPACING * (photosCount - 1) +
+    BOTTOM_MARGIN;
 
   const canvas = document.createElement("canvas");
   canvas.width = stripWidth;
   canvas.height = stripHeight;
   const ctx = canvas.getContext("2d");
+
+  // ---- Background ----
+  ctx.fillStyle = "#5a1a1a";
+  ctx.fillRect(0, 0, stripWidth, stripHeight);
+
+  // ---- Title ----
+  drawTitle(
+    ctx,
+    "Ure's 30th Murder Mystery Party",
+    stripWidth,
+    SIDE_MARGIN,
+    TOP_MARGIN / 2 + 20
+  );
+
+  // ---- Draw Photos ----
+  let loaded = 0;
+  photos.forEach((src, i) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous"; // ensures download works on mobile/iOS
+    img.onload = () => {
+      const x = SIDE_MARGIN;
+      const y = TOP_MARGIN + i * (photoHeight + SPACING);
+
+      // Reset context state for each photo
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.filter = "grayscale(1) contrast(1.4) brightness(1) sepia(0.05)";
+      ctx.drawImage(img, x, y, photoWidth, photoHeight);
+
+      // Border
+      ctx.strokeStyle = "#3e0f0f";
+      ctx.lineWidth = 0.5; // lighter lines across text & photos
+      ctx.strokeRect(x, y, photoWidth, photoHeight);
+
+      loaded++;
+      if (loaded === photosCount) {
+        // ---- Bottom Text + Texture ----
+        drawBottomTextAndTexture(
+          ctx,
+          stripWidth,
+          TOP_MARGIN,
+          photoHeight,
+          SPACING,
+          photosCount
+        );
+
+        // ---- Append to preview ----
+        result.innerHTML = "";
+        result.appendChild(canvas);
+        finalStripCanvas = canvas;
+
+        // ---- Show download button ----
+        document.getElementById("downloadBtn").style.display = "inline-block";
+      }
+    };
+    img.src = src;
+  });
+}
+
 
   // Background
   ctx.fillStyle = "#5a1a1a";
@@ -117,29 +180,23 @@ function buildStrip() {
   drawTitle(ctx, "Ure's 30th Murder Mystery Party", stripWidth, SIDE_MARGIN, TOP_MARGIN / 2 + 20);
 
   // Draw photos
-  let loadedCount = 0;
-  photos.forEach((src, i) => {
-    const img = new Image();
-    img.onload = () => {
-      const x = SIDE_MARGIN;
-      const y = TOP_MARGIN + i * (photoHeight + SPACING);
-      ctx.drawImage(img, x, y, photoWidth, photoHeight);
-      ctx.strokeStyle = "#3e0f0f";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(x, y, photoWidth, photoHeight);
+  let loaded = 0;
+photos.forEach((src, i) => {
+  const img = new Image();
+  img.onload = () => {
+    drawPhotoOnCanvas(ctx, img, i);
+    loaded++;
+    if (loaded === photos.length) {
+      // Only now append canvas
+      result.innerHTML = "";
+      result.appendChild(canvas);
+      document.getElementById("downloadBtn").style.display = "inline-block";
+    }
+  };
+  img.src = src;
+});
 
-      loadedCount++;
-      if (loadedCount === photos.length) {
-        drawBottomTextAndTexture(ctx, stripWidth, stripHeight, TOP_MARGIN, photoHeight, SPACING, BOTTOM_MARGIN);
-        result.innerHTML = "";
-        result.appendChild(canvas);
-        finalStripCanvas = canvas;
-        document.getElementById("downloadBtn").style.display = "inline-block";
-      }
-    };
-    img.src = src;
-  });
-}
+
 
 // Top title dynamically fits margin
 function drawTitle(ctx, text, stripWidth, sideMargin, yPosition) {
