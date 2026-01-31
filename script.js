@@ -65,95 +65,74 @@ function flashEffect() {
 }
 
 /* ======================
-   CAPTURE PHOTO (LOCKED 600x800)
+   TAKE PHOTO
 ====================== */
 function takePhoto() {
   const canvas = document.createElement("canvas");
-  const w = 600;
-  const h = 800;
-
+  const w = 600, h = 800;
   canvas.width = w;
   canvas.height = h;
-
   const ctx = canvas.getContext("2d");
-
-  // Mirror horizontally
-  ctx.scale(-1, 1);
+  ctx.scale(-1,1);
   ctx.drawImage(video, -w, 0, w, h);
-
   photos.push(canvas.toDataURL("image/png"));
 }
 
 /* ======================
-   SESSION
+   START SESSION
 ====================== */
 async function startSession() {
   photos = [];
   result.innerHTML = "";
   document.getElementById("downloadBtn").style.display = "none";
 
-  for (let i = 0; i < 4; i++) {
+  for (let i=0;i<4;i++){
     await countdown(3);
     takePhoto();
     await flashEffect();
-    if (i < 3) await pause(800);
+    if(i<3) await pause(800);
   }
 
   buildStrip();
 }
 
 /* ======================
-   BUILD STRIP
+   BUILD STRIP (PREVIEW)
 ====================== */
 function buildStrip() {
-  const SIDE_MARGIN = 20;
-  const TOP_MARGIN = 100;
-  const BOTTOM_MARGIN = 120;
-  const SPACING = 20;
-  const photoWidth = 600;
-  const photoHeight = 800;
+  const SIDE_MARGIN = 20, TOP_MARGIN = 100, BOTTOM_MARGIN = 120, SPACING = 20;
+  const photoWidth = 600, photoHeight = 800;
   const photosCount = photos.length;
 
-  const stripWidth = photoWidth + SIDE_MARGIN * 2;
-  const stripHeight =
-    TOP_MARGIN +
-    photoHeight * photosCount +
-    SPACING * (photosCount - 1) +
-    BOTTOM_MARGIN;
+  const stripWidth = photoWidth + SIDE_MARGIN*2;
+  const stripHeight = TOP_MARGIN + photoHeight*photosCount + SPACING*(photosCount-1) + BOTTOM_MARGIN;
 
   const canvas = document.createElement("canvas");
   canvas.width = stripWidth;
   canvas.height = stripHeight;
   const ctx = canvas.getContext("2d");
 
-  /* ---- Background ---- */
+  // Background
   ctx.fillStyle = "#5a1a1a";
-  ctx.fillRect(0, 0, stripWidth, stripHeight);
+  ctx.fillRect(0,0,stripWidth,stripHeight);
 
-  /* ---- Title ---- */
-  drawTitle(ctx, "Ure's 30th Murder Mystery Party", stripWidth, SIDE_MARGIN, TOP_MARGIN / 2 + 20);
+  // Title
+  drawTitle(ctx,"Ure's 30th Murder Mystery Party", stripWidth, SIDE_MARGIN, TOP_MARGIN/2 + 20);
 
-  /* ---- Draw Photos (preview) ---- */
   let loaded = 0;
-  photos.forEach((src, i) => {
+  photos.forEach((src,i)=>{
     const img = new Image();
-    img.onload = () => {
-      const x = SIDE_MARGIN;
-      const y = TOP_MARGIN + i * (photoHeight + SPACING);
-
-      // Apply black & white + sepia filter for preview
+    img.onload = ()=>{
+      const x = SIDE_MARGIN, y = TOP_MARGIN + i*(photoHeight + SPACING);
       ctx.filter = "grayscale(1) contrast(1.4) brightness(1) sepia(0.05)";
       ctx.drawImage(img, x, y, photoWidth, photoHeight);
-
-      // Border
       ctx.strokeStyle = "#3e0f0f";
       ctx.lineWidth = 0.5;
-      ctx.strokeRect(x, y, photoWidth, photoHeight);
+      ctx.strokeRect(x,y,photoWidth,photoHeight);
 
       loaded++;
-      if (loaded === photosCount) {
+      if(loaded === photosCount){
         drawBottomTextAndTexture(ctx, stripWidth, TOP_MARGIN, photoHeight, SPACING, photosCount);
-
         result.innerHTML = "";
         result.appendChild(canvas);
         finalStripCanvas = canvas;
@@ -167,52 +146,48 @@ function buildStrip() {
 /* ======================
    TITLE
 ====================== */
-function drawTitle(ctx, text, stripWidth, sideMargin, y) {
+function drawTitle(ctx,text,stripWidth,sideMargin,y){
   let size = 48;
   ctx.fillStyle = "#f5f0e6";
   ctx.textAlign = "center";
-
-  do {
+  do{
     ctx.font = `${size}px 'Playwrite India Guides', cursive`;
     size--;
-  } while (ctx.measureText(text).width > stripWidth - sideMargin * 2 && size > 10);
-
-  ctx.fillText(text, stripWidth / 2, y);
+  }while(ctx.measureText(text).width > stripWidth-sideMargin*2 && size>10);
+  ctx.fillText(text, stripWidth/2, y);
 }
 
 /* ======================
    BOTTOM TEXT + TEXTURE
 ====================== */
-function drawBottomTextAndTexture(ctx, stripWidth, topMargin, photoHeight, spacing, photosCount) {
-  const text = document.getElementById("customText").value.slice(0, MAX_CUSTOM_CHARS);
+function drawBottomTextAndTexture(ctx,stripWidth,topMargin,photoHeight,spacing,photosCount){
+  const text = document.getElementById("customText").value.slice(0,MAX_CUSTOM_CHARS);
   const words = text.split(" ");
-  let line1 = "";
-  let line2 = "";
-  for (const word of words) {
-    if ((line1 + " " + word).trim().length <= 30) line1 = (line1 + " " + word).trim();
-    else line2 = (line2 + " " + word).trim();
+  let line1="", line2="";
+  for(const word of words){
+    if((line1+" "+word).trim().length <= 30) line1=(line1+" "+word).trim();
+    else line2=(line2+" "+word).trim();
   }
 
-  const startY = topMargin + photoHeight * photosCount + spacing * (photosCount - 1) + 30;
+  const startY = topMargin + photoHeight*photosCount + spacing*(photosCount-1) + 30;
 
-  ctx.filter = "none"; // text itself has no filter
+  ctx.filter = "none";
   ctx.fillStyle = "#f5f0e6";
   ctx.textAlign = "center";
   ctx.font = "22px 'Playwrite India Guides', cursive";
-  ctx.fillText(line1, stripWidth / 2, startY);
-  ctx.fillText(line2, stripWidth / 2, startY + 28);
-
+  ctx.fillText(line1,stripWidth/2,startY);
+  ctx.fillText(line2,stripWidth/2,startY+28);
   ctx.font = "16px 'Playwrite India Guides', cursive";
-  ctx.fillText(new Date().toLocaleDateString(), stripWidth / 2, startY + 60);
+  ctx.fillText(new Date().toLocaleDateString(), stripWidth/2, startY+60);
 
   // Texture overlay
   const texture = new Image();
-  texture.onload = () => {
+  texture.onload = ()=>{
     ctx.save();
     ctx.globalAlpha = 0.25;
     ctx.globalCompositeOperation = "multiply";
-    const scale = stripWidth / texture.width;
-    ctx.drawImage(texture, 0, 0, stripWidth, texture.height * scale);
+    const scale = stripWidth/texture.width;
+    ctx.drawImage(texture,0,0,stripWidth,texture.height*scale);
     ctx.restore();
   };
   texture.src = "vintage-texture.jpg";
@@ -221,10 +196,9 @@ function drawBottomTextAndTexture(ctx, stripWidth, topMargin, photoHeight, spaci
 /* ======================
    DOWNLOAD
 ====================== */
-function downloadStrip() {
-  if (!finalStripCanvas) return;
+function downloadStrip(){
+  if(!finalStripCanvas) return;
 
-  // Create temporary canvas for download
   const downloadCanvas = document.createElement("canvas");
   downloadCanvas.width = finalStripCanvas.width;
   downloadCanvas.height = finalStripCanvas.height;
@@ -232,54 +206,44 @@ function downloadStrip() {
 
   // Background
   ctx.fillStyle = "#5a1a1a";
-  ctx.fillRect(0, 0, downloadCanvas.width, downloadCanvas.height);
+  ctx.fillRect(0,0,downloadCanvas.width,downloadCanvas.height);
 
-  const SIDE_MARGIN = 20;
-  const TOP_MARGIN = 100;
-  const SPACING = 20;
-  const BOTTOM_MARGIN = 120;
-  const photoWidth = 600;
-  const photoHeight = 800;
+  const SIDE_MARGIN = 20, TOP_MARGIN = 100, SPACING = 20, photoWidth = 600, photoHeight = 800;
 
-  // Draw each photo with filters baked in
   let loaded = 0;
-  photos.forEach((src, i) => {
+  photos.forEach((src,i)=>{
     const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      const x = SIDE_MARGIN;
-      const y = TOP_MARGIN + i * (photoHeight + SPACING);
-
+    img.crossOrigin="anonymous";
+    img.onload = ()=>{
+      const x = SIDE_MARGIN, y = TOP_MARGIN + i*(photoHeight + SPACING);
       ctx.filter = "grayscale(1) contrast(1.4) brightness(1) sepia(0.05)";
-      ctx.drawImage(img, x, y, photoWidth, photoHeight);
-
+      ctx.drawImage(img,x,y,photoWidth,photoHeight);
       ctx.strokeStyle = "#3e0f0f";
       ctx.lineWidth = 0.5;
-      ctx.strokeRect(x, y, photoWidth, photoHeight);
+      ctx.strokeRect(x,y,photoWidth,photoHeight);
 
       loaded++;
-      if (loaded === photos.length) {
-        // Bottom text
-        drawBottomTextAndTexture(ctx, downloadCanvas.width, TOP_MARGIN, photoHeight, SPACING, photos.length);
+      if(loaded === photos.length){
+        drawBottomTextAndTexture(ctx,downloadCanvas.width,TOP_MARGIN,photoHeight,SPACING,photos.length);
 
         // Trigger download
-        if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+        if(/iPhone|iPad|iPod/.test(navigator.userAgent)){
           const imgURL = downloadCanvas.toDataURL("image/png");
-          const popup = window.open(imgURL, "_blank");
-          if (!popup) alert("Enable popups to download on iOS");
+          const popup = window.open(imgURL,"_blank");
+          if(!popup) alert("Enable popups to download on iOS");
         } else {
           const link = document.createElement("a");
-          link.download = "photo-strip.png";
+          link.download="photo-strip.png";
           link.href = downloadCanvas.toDataURL("image/png");
           link.click();
         }
 
         // Reset for next user
-        document.getElementById("customText").value = "";
-        document.getElementById("result").innerHTML = "";
+        document.getElementById("customText").value="";
+        document.getElementById("result").innerHTML="";
         finalStripCanvas = null;
-        document.getElementById("downloadBtn").style.display = "none";
-        photos = [];
+        document.getElementById("downloadBtn").style.display="none";
+        photos=[];
       }
     };
     img.src = src;
