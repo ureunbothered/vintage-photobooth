@@ -117,5 +117,6 @@ button.secondary:hover {
   background: #5a1a1a;
   display: block;
   margin: 0 auto;
-  filter: grayscale(1) contrast(1.4) brightness(1) sepia(0.05); /* preview only */
+  /* remove filter: grayscale(1) contrast(1.4) brightness(1) sepia(0.05); */
 }
+
