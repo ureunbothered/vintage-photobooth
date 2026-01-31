@@ -180,7 +180,7 @@ function drawBottomTextAndTexture(ctx, stripWidth, stripHeight, topMargin, photo
     else line2 = (line2 + " " + word).trim();
   }
 
-  const startY = topMargin + photoHeight * 4 + spacing * (4 - 1) + 30;
+  const startY = stripHeight - bottomMargin + 30;
 
   ctx.fillStyle = "#f5f0e6";
   ctx.textAlign = "center";
@@ -199,7 +199,7 @@ function drawBottomTextAndTexture(ctx, stripWidth, stripHeight, topMargin, photo
     ctx.globalAlpha = 0.25;
     ctx.globalCompositeOperation = "multiply";
     const scale = stripWidth / texture.width;
-    ctx.drawImage(texture, 0, 0, stripWidth, texture.height * scale);
+    ctx.drawImage(texture, 0, 0, stripWidth, stripHeight);
     ctx.restore();
   };
 }
