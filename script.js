@@ -175,8 +175,8 @@ function buildStrip() {
       const y = TOP_MARGIN + i * (PHOTO_H + SPACING);
 
       ctx.save();
-      drawImageGrayscale(ctx, img, x, y, photoWidth, photoHeight);
-
+      ctx.filter = "grayscale(1) contrast(1.3) brightness(1) sepia(0.06)";
+      ctx.drawImage(img, x, y, PHOTO_W, PHOTO_H);
       ctx.restore();
 
       ctx.strokeStyle = "#3e0f0f";
@@ -262,55 +262,13 @@ function applyTexture(ctx) {
   };
 }
 
-function drawImageGrayscale(ctx, img, x, y, w, h) {
-  const tempCanvas = document.createElement("canvas");
-  tempCanvas.width = w;
-  tempCanvas.height = h;
-  const tctx = tempCanvas.getContext("2d");
-
-  tctx.drawImage(img, 0, 0, w, h);
-
-  const imageData = tctx.getImageData(0, 0, w, h);
-  const data = imageData.data;
-
-  for (let i = 0; i < data.length; i += 4) {
-    const r = data[i];
-    const g = data[i + 1];
-    const b = data[i + 2];
-    const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-
-    data[i] = data[i + 1] = data[i + 2] = gray;
-  }
-
-  tctx.putImageData(imageData, 0, 0);
-  ctx.drawImage(tempCanvas, x, y);
-}
-
-
 /* ======================
    DOWNLOAD
 ====================== */
 function downloadStrip() {
   if (!finalStripCanvas) return;
-
-  const isPhone =
-    /iPhone|Android.*Mobile|Windows Phone/i.test(navigator.userAgent);
-
-  // Desktop + iPad: keep EXACT behavior you already have
-  if (!isPhone) {
-    const link = document.createElement("a");
-    link.download = "photo-strip.png";
-    link.href = finalStripCanvas.toDataURL("image/png");
-    link.click();
-    return;
-  }
-
-  // Phone fallback: open image so user can long-press → Save
-  finalStripCanvas.toBlob(blob => {
-    const url = URL.createObjectURL(blob);
-    window.open(url, "_blank");
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
-  }, "image/png");
+  const a = document.createElement("a");
+  a.download = "photo-strip.png";
+  a.href = finalStripCanvas.toDataURL("image/png");
+  a.click();
 }
-
-
