@@ -148,6 +148,12 @@ function buildStrip() {
         result.appendChild(canvas);
         finalStripCanvas = canvas;
         document.getElementById("downloadBtn").style.display = "inline-block";
+
+        // 🔒 FORCE correct preview aspect ratio (iPad Safari fix)
+        const displayWidth = result.clientWidth;
+        const ratio = canvas.height / canvas.width;
+        canvas.style.width = displayWidth + "px";
+        canvas.style.height = displayWidth * ratio + "px";
       }
     };
     img.src = src;

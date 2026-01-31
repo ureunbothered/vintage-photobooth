@@ -113,7 +113,6 @@ button.secondary:hover {
 
 #result canvas {
   width: 100%;
-  height: auto;
   aspect-ratio: 640 / 3680;
   max-width: 100%;  /* scale down on small screens without stretching */
   border: 4px solid #3e0f0f;
