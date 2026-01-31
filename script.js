@@ -278,3 +278,19 @@ function downloadStrip() {
   link.href = finalStripCanvas.toDataURL("image/png");
   link.click();
 }
+
+function downloadStrip() {
+  if (!finalStripCanvas) return;
+
+  // Trigger download
+  const link = document.createElement("a");
+  link.download = "photo-strip.png";
+  link.href = finalStripCanvas.toDataURL("image/png");
+  link.click();
+
+  // ✅ Reset for next user
+  document.getElementById("customText").value = ""; // clear text input
+  document.getElementById("result").innerHTML = "";  // clear preview
+  finalStripCanvas = null;                           // reset stored canvas
+}
+
